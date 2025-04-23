@@ -1,13 +1,28 @@
+import UserList from "@/components/UserList";
 import { useNetwork } from "@/hooks/useNetwork";
-import { Button, Text, View } from "react-native";
+import { Button, StyleSheet, Text, View } from "react-native";
 
 export default function GameScreeen() {
-  const { createRoom } = useNetwork();
+  const {} = useNetwork();
 
   return (
-    <View>
-      <Text>Sala do jogo!</Text>
-      <Button onPress={createRoom} title="Criar jogo" />
+    <View style={styles.container}>
+      <Text style={styles.title}>Sala do jogo</Text>
+
+      <UserList />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 24,
+  },
+  title: {
+    fontSize: 24,
+  },
+  actionsContainer: {
+    marginTop: 24,
+    gap: 8,
+  },
+});

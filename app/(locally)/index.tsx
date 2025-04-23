@@ -8,8 +8,8 @@ export default function LocallyScreeen() {
       <Text style={styles.title}>Jogar localmente</Text>
 
       <View style={styles.actionsContainer}>
-        <Link href="/(game)" asChild>
-          <Button title="Criar sala" />
+        <Link href="/(create-room)" asChild>
+          <Button title="Nova sala" />
         </Link>
       </View>
 

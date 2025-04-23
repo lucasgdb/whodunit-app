@@ -47,14 +47,16 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DefaultTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(game)" options={{ headerShown: false }} />
-
         <Stack.Screen name="(locally)" options={{ headerShown: false }} />
+
+        <Stack.Screen name="(create-room)" options={{ headerShown: false }} />
+
+        <Stack.Screen name="(game)" options={{ headerShown: false }} />
 
         <Stack.Screen
           name="index"
           options={{
-            title: "Home",
+            title: "WhoDunit",
           }}
         />
       </Stack>

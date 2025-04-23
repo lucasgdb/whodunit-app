@@ -3,9 +3,9 @@ import { Link } from "expo-router";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 
 export default function HomeScreen() {
-  const { username, setUsername } = userStore();
+  const { user, setUsername } = userStore();
 
-  const handleChangeUsername = (value: string) => setUsername(value);
+  const handleChangeUsername = (username: string) => setUsername(username);
 
   return (
     <View style={styles.container}>
@@ -15,7 +15,7 @@ export default function HomeScreen() {
         <Text>Digite seu nome:</Text>
         <TextInput
           placeholder="Nome"
-          value={username}
+          value={user.name}
           onChangeText={handleChangeUsername}
           style={styles.input}
         />
@@ -27,7 +27,7 @@ export default function HomeScreen() {
         </Link>
 
         <Link href="/(locally)" asChild>
-          <Button title="Local" disabled={username.length < 4} />
+          <Button title="Local" disabled={user.name.length < 4} />
         </Link>
       </View>
     </View>
@@ -43,12 +43,12 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginTop: 24,
+    gap: 8,
   },
   input: {
     height: 40,
     borderWidth: 1,
     padding: 10,
-    marginTop: 8,
   },
   actionsContainer: {
     marginTop: 24,

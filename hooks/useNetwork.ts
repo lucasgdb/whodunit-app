@@ -1,68 +1,35 @@
 import { createServer, startBroadcast } from "@/network/host";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import Server from "react-native-tcp-socket/lib/types/Server";
 import UdpSocket from "react-native-udp/lib/types/UdpSocket";
-import dgram from "react-native-udp";
 import TcpSocket from "react-native-tcp-socket";
 import { Alert } from "react-native";
 import { userStore } from "@/stores/user.store";
 import { portStore } from "@/stores/port.store";
+import { roomsStore } from "@/stores/rooms.store";
+import { usersStore } from "@/stores/users.store";
+import { useRoomStore } from "@/stores/room.store";
+import { Broadcast } from "@/constants/Broadcast";
 
 export function useNetwork() {
-  const username = userStore((store) => store.username);
+  const user = userStore((store) => store.user);
   const port = portStore((store) => store.port);
 
-  const [rooms, setRooms] = useState<
-    { name: string; ip: string; port: number }[]
-  >([]);
+  const rooms = roomsStore((store) => store.rooms);
 
-  const [clients, setClients] = useState<{ name: string; ip: string }[]>([]);
-
-  const broadcast = useRef<UdpSocket | null>(null);
-  const broadcastInterval = useRef<NodeJS.Timeout | null>(null);
-  const tcpServer = useRef<Server | null>(null);
-
-  useEffect(() => {
-    const socket = dgram.createSocket({
-      type: "udp4",
-    });
-
-    const foundIPs = new Set();
-
-    socket.on("message", (msg) => {
-      const [type, name, ip] = msg.toString().split("|");
-
-      if (type == "ROOM_CREATE" && !foundIPs.has(name)) {
-        foundIPs.add(name);
-        setRooms((prev) => [...prev, { name, ip, port }]);
-      }
-
-      if (type === "ROOM_DELETE") {
-        foundIPs.delete(name);
-
-        setRooms((prevRooms) => {
-          const newRooms = prevRooms.filter(
-            (prevRoom) => prevRoom.name !== name
-          );
-
-          return newRooms;
-        });
-      }
-    });
-
-    socket.bind(port);
-
-    return () => {
-      socket.close();
-    };
-  }, []);
+  const users = usersStore((store) => store.users);
+  const addUser = usersStore((store) => store.addUser);
+  const removeUser = usersStore((store) => store.removeUser);
 
   const createRoom = useCallback(async () => {
-    if (broadcast.current || tcpServer.current) {
+    const { broadcast, tcpServer, setBroadcast, setTcpServer } =
+      useRoomStore.getState();
+
+    if (broadcast || tcpServer) {
       return;
     }
 
-    const { interval, socket, ip } = await startBroadcast(username, port);
+    const { interval, socket, ip } = await startBroadcast(user, port);
 
     if (!ip) {
       return;
@@ -70,34 +37,44 @@ export function useNetwork() {
 
     const server = createServer(ip, port);
 
-    tcpServer.current = server;
-    broadcast.current = socket;
-    broadcastInterval.current = interval;
+    connectToServer(ip, port);
+
+    setTcpServer(server);
+    setBroadcast(socket, interval);
   }, []);
 
   const closeRoom = useCallback(() => {
-    if (broadcastInterval.current) clearInterval(broadcastInterval.current);
+    const { broadcast, broadcastInterval, tcpServer, reset } =
+      useRoomStore.getState();
 
-    const message = `ROOM_DELETE|Lucas|null|null`;
+    if (broadcastInterval) clearInterval(broadcastInterval);
 
-    broadcast.current?.send(
-      message,
-      0,
-      message.length,
-      port, // porta de broadcast
-      "255.255.255.255", // enviar para todos na rede
-      (err) => {
-        if (err) console.error("Erro ao enviar broadcast:", err);
-      }
-    );
+    if (broadcast) {
+      const message = `${user.id}|ROOM_DELETE|${user.name}|null|${port}`;
 
-    if (broadcast.current) broadcast.current.close();
-    if (tcpServer.current) tcpServer.current.close();
+      broadcast.send(
+        message,
+        0,
+        message.length,
+        port, // porta de broadcast
+        "255.255.255.255", // enviar para todos na rede
+        (err) => {
+          if (err) console.error("Erro ao enviar broadcast:", err);
+        }
+      );
+
+      broadcast.close();
+    }
+
+    if (tcpServer) tcpServer.close();
+
+    reset();
   }, []);
 
   const connectToServer = useCallback((ip: string, port: number) => {
-    const client = TcpSocket.createConnection({ host: ip, port: port }, () => {
+    const client = TcpSocket.createConnection({ host: ip, port }, () => {
       console.log("Conectado ao servidor");
+      addUser({ id: user.id, name: user.name });
     });
 
     client.on("data", (data) => {
@@ -111,6 +88,7 @@ export function useNetwork() {
 
     client.on("close", () => {
       console.log("Conexão fechada");
+      removeUser(user.id);
     });
 
     return client;
@@ -118,6 +96,7 @@ export function useNetwork() {
 
   return {
     rooms,
+    users,
     createRoom,
     closeRoom,
     connectToServer,

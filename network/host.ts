@@ -1,8 +1,10 @@
 import dgram from "react-native-udp";
 import TcpSocket from "react-native-tcp-socket";
 import { NetworkInfo } from "react-native-network-info";
+import { User } from "@/types/User";
+import { Broadcast } from "@/constants/Broadcast";
 
-export const startBroadcast = async (username: string, port: number) => {
+export const startBroadcast = async (user: User, port: number) => {
   const socket = dgram.createSocket({
     type: "udp4",
   });
@@ -11,14 +13,14 @@ export const startBroadcast = async (username: string, port: number) => {
 
   let interval: NodeJS.Timeout | undefined;
 
-  const message = `ROOM_CREATE|${username}|${ip}|${port}`;
+  const message = `${user.id}|ROOM_CREATE|${user.name}|${ip}|${port}`;
 
   interval = setInterval(() => {
     socket.send(
       message,
       0,
       message.length,
-      port, // porta de broadcast
+      Broadcast.port, // porta de broadcast
       "255.255.255.255", // enviar para todos na rede
       (err) => {
         if (err) console.error("Erro ao enviar broadcast:", err);
@@ -30,10 +32,10 @@ export const startBroadcast = async (username: string, port: number) => {
     socket.setBroadcast(true);
   });
 
-  socket.on("message", (msg, rinfo) => {
-    console.log(`Mensagem recebida: ${msg}`);
-    // Seu código de tratamento de mensagens
-  });
+  // socket.on("message", (msg, rinfo) => {
+  //   console.log(`Mensagem recebida: ${msg}`);
+  //   // Seu código de tratamento de mensagens
+  // });
 
   socket.bind(port);
 
@@ -46,22 +48,18 @@ export const startBroadcast = async (username: string, port: number) => {
 
 export function createServer(ip: string, port: number) {
   const server = TcpSocket.createServer((socket) => {
-    console.log("Novo cliente conectado");
+    console.log("Nova sala criada");
 
-    // Quando um cliente envia uma mensagem
     socket.on("data", (data) => {
       console.log("Mensagem recebida:", data.toString());
 
-      // Envia uma resposta para todos os clientes conectados
-      socket.write("Sala criada com sucesso!");
+      // socket.write("Sala criada com sucesso!");
     });
 
-    // Quando a conexão é fechada
     socket.on("close", () => {
       console.log("Conexão fechada");
     });
 
-    // Em caso de erro
     socket.on("error", (err) => {
       console.error("Erro no socket:", err);
     });
