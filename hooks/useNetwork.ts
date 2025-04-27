@@ -2,7 +2,7 @@ import { closeBroadcast, createServer, startBroadcast } from "@/network/host";
 import { useCallback } from "react";
 import { userStore } from "@/stores/user.store";
 import { portStore } from "@/stores/port.store";
-import { connectToServer } from "@/network/client";
+import { connectToHost } from "@/network/client";
 import { roomStore } from "@/stores/room.store";
 import { Room } from "@/types/Room";
 import { router } from "expo-router";
@@ -14,12 +14,20 @@ export function useNetwork() {
 
   const setRoom = roomStore((store) => store.setRoom);
 
+  const connectToRoom = useCallback((room: Room, callback?: () => void) => {
+    return connectToHost(room).once("connect", () => {
+      callback?.();
+      setRoom(room);
+      router.replace("/(lobby)/lobby");
+    });
+  }, []);
+
   const createRoom = useCallback(
     (room: Room, callback: () => void) => {
-      startBroadcast(room.name, user, port);
+      startBroadcast(room, user, port);
 
       createServer(user.ip, port).once("listening", () => {
-        connectToHost(room).once("connect", callback);
+        connectToRoom(room, callback);
       });
     },
     [user, port]
@@ -31,17 +39,9 @@ export function useNetwork() {
     }
   }, [room]);
 
-  const connectToHost = useCallback((room: Room) => {
-    setRoom(room);
-
-    return connectToServer(room.ip, room.port).once("connect", () => {
-      router.replace("/(lobby)/lobby");
-    });
-  }, []);
-
   return {
     createRoom,
     closeRoom,
-    connectToHost,
+    connectToRoom,
   };
 }

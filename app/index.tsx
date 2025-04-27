@@ -26,7 +26,7 @@ export default function HomeScreen() {
         <Link href="/(locally)/locally" replace asChild>
           <Icon.Button
             name="signal-wifi-0-bar"
-            backgroundColor="#9a9a9a"
+            backgroundColor="#aaa"
             style={{ justifyContent: "center" }}
             disabled
           >
@@ -37,7 +37,7 @@ export default function HomeScreen() {
         <Link href="/(locally)/locally" replace asChild>
           <Icon.Button
             name="signal-cellular-alt"
-            backgroundColor="#3b5998"
+            backgroundColor={user.name.length < 4 ? "#aaa" : "#3b5998"}
             disabled={user.name.length < 4}
             style={{ justifyContent: "center" }}
           >

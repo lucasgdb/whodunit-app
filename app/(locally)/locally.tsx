@@ -1,5 +1,5 @@
 import { CreateRoomButton } from "@/components/CreateRoomButton";
-import RoomList from "@/components/RoomList";
+import { RoomList } from "@/components/RoomList";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function LocallyScreeen() {

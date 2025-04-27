@@ -2,19 +2,16 @@ import { roomStore } from "@/stores/room.store";
 import { User } from "@/types/User";
 import React from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/MaterialIcons";
 
-export default function UserList() {
+export function UserList() {
   const users = roomStore((store) => store.users);
   const room = roomStore((store) => store.room);
 
   const getIsHost = (user: User) => user.id === room?.id;
 
-  const canStart = users.length >= 4;
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Jogadores conectados</Text>
+      <Text style={styles.title}>Jogadores conectados ({users.length})</Text>
 
       {users.length > 0 ? (
         <FlatList
@@ -30,19 +27,6 @@ export default function UserList() {
         />
       ) : (
         <Text style={styles.emptyWarning}>Não há nenhum usuário conectado</Text>
-      )}
-
-      {users.some(getIsHost) && (
-        <View style={styles.actionsContainer}>
-          <Icon.Button
-            name="play-arrow"
-            backgroundColor={!canStart ? "#9a9a9a" : "#3b5998"}
-            style={{ justifyContent: "center" }}
-            disabled={!canStart}
-          >
-            Iniciar jogo
-          </Icon.Button>
-        </View>
       )}
     </View>
   );
@@ -60,7 +44,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   emptyWarning: {
-    fontSize: 12,
+    fontSize: 16,
     color: "#666",
     marginTop: 8,
   },

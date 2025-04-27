@@ -5,24 +5,29 @@ import { roomStore } from "@/stores/room.store";
 import { User } from "@/types/User";
 import { router } from "expo-router";
 import { roomsStore } from "@/stores/rooms.store";
+import { Room } from "@/types/Room";
 
 let client: TcpSocket.Socket | null = null;
 
-export const connectToServer = (ip: string, port: number = 41234) => {
+export const connectToHost = (room: Room) => {
   if (client) {
     return client;
   }
 
-  client = TcpSocket.createConnection({ host: ip, port: port }, () => {
-    const { user } = userStore.getState();
+  client = TcpSocket.createConnection(
+    { host: room.ip, port: room.port },
+    () => {
+      const { user } = userStore.getState();
 
-    const joinMsg = JSON.stringify({
-      type: "joinRoom",
-      payload: { id: user.id, name: user.name },
-    });
+      const joinMsg =
+        JSON.stringify({
+          type: "joinRoom",
+          payload: { id: user.id, name: user.name },
+        }) + "\n";
 
-    client?.write(joinMsg);
-  });
+      client?.write(joinMsg);
+    }
+  );
 
   let buffer = "";
 

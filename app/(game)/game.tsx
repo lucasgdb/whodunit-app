@@ -1,4 +1,4 @@
-import UserList from "@/components/UserList";
+import { UserList } from "@/components/UserList";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function GameScreeen() {

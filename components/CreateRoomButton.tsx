@@ -25,7 +25,7 @@ export function CreateRoomButton() {
     <>
       <Icon.Button
         name="plus"
-        backgroundColor={disabled ? "#9a9a9a" : "#3b5998"}
+        backgroundColor={disabled ? "#aaa" : "#3b5998"}
         onPress={handlePresentModalPress}
         disabled={disabled}
         style={{ justifyContent: "center" }}

@@ -1,21 +1,16 @@
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useNetwork } from "@/hooks/useNetwork";
 import { roomsStore } from "@/stores/rooms.store";
-import { Room } from "@/types/Room";
 import React from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 
-export default function RoomList() {
+export function RoomList() {
   useBroadcast();
 
   const rooms = roomsStore((store) => store.rooms);
 
-  const { connectToHost } = useNetwork();
-
-  const handleJoin = (room: Room) => {
-    connectToHost(room);
-  };
+  const { connectToRoom } = useNetwork();
 
   return (
     <View style={styles.container}>
@@ -24,15 +19,15 @@ export default function RoomList() {
       {rooms.length > 0 ? (
         <FlatList
           data={rooms}
-          keyExtractor={(item) => item.ip}
+          keyExtractor={(room) => room.ip}
           renderItem={({ item }) => (
             <View style={styles.roomContainer}>
-              <Text style={styles.roomName}>Sala de {item.owner}</Text>
+              <Text style={styles.roomName}>Lobby de {item.owner}</Text>
 
               <Icon.Button
                 name="chevron-right"
                 backgroundColor="#3b5998"
-                onPress={() => handleJoin(item)}
+                onPress={() => connectToRoom(item)}
               >
                 Entrar
               </Icon.Button>
@@ -40,7 +35,7 @@ export default function RoomList() {
           )}
         />
       ) : (
-        <Text style={styles.emptyWarning}>Não há nenhuma sala criada</Text>
+        <Text style={styles.emptyWarning}>Não há nenhuma lobby criado</Text>
       )}
     </View>
   );
@@ -65,7 +60,7 @@ const styles = StyleSheet.create({
     color: "#666",
   },
   emptyWarning: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#666",
     marginTop: 8,
   },

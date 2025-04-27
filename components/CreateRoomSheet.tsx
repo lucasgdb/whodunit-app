@@ -46,7 +46,7 @@ export const CreateRoomSheet = forwardRef<BottomSheetModal, Props>(
 
             <View style={styles.formContainer}>
               <View style={styles.inputContainer}>
-                <Text>Digite o nome da sala:</Text>
+                <Text>Digite o nome do lobby:</Text>
                 <TextInput
                   placeholder={user.name}
                   style={styles.input}

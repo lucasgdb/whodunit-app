@@ -1,6 +1,5 @@
 import dgram from "react-native-udp";
 import TcpSocket from "react-native-tcp-socket";
-import { NetworkInfo } from "react-native-network-info";
 import { User } from "@/types/User";
 import { Broadcast } from "@/constants/Broadcast";
 import UdpSocket from "react-native-udp/lib/types/UdpSocket";
@@ -8,7 +7,7 @@ import Server from "react-native-tcp-socket/lib/types/Server";
 import { Room } from "@/types/Room";
 
 let broadcastSocket: UdpSocket | null = null;
-let broadcastInterval: NodeJS.Timeout | null;
+let broadcastInterval: ReturnType<typeof setInterval> | null;
 let tcpServer: Server | null;
 
 const clients: TcpSocket.Socket[] = [];
@@ -17,7 +16,7 @@ const socketClientsMap = new Map<
   { id: string; name: string }
 >();
 
-export const startBroadcast = (roomName: string, user: User, port: number) => {
+export const startBroadcast = (room: Room, user: User, port: number) => {
   if (!user.ip) {
     return;
   }
@@ -35,7 +34,7 @@ export const startBroadcast = (roomName: string, user: User, port: number) => {
       id: user.id,
       type: "ROOM_CREATE",
       owner: user.name,
-      roomName,
+      roomName: room.name,
       ip: user.ip,
       port,
     });
@@ -125,17 +124,38 @@ export function createServer(host: string, port: number) {
   tcpServer = TcpSocket.createServer((socket) => {
     clients.push(socket);
 
+    let buffer = "";
+
     socket.on("data", (data) => {
-      const msg = JSON.parse(data.toString());
+      buffer += data.toString();
 
-      switch (msg.type) {
-        case "joinRoom":
-          const { id, name } = msg.payload as { id: string; name: string };
+      let boundary: number;
 
-          socketClientsMap.set(socket, { id, name });
+      while ((boundary = buffer.indexOf("\n")) !== -1) {
+        const packet = buffer.slice(0, boundary).trim();
+        buffer = buffer.slice(boundary + 1);
 
-          broadcast({ type: "playerJoined", payload: { id, name } });
-          break;
+        if (!packet) continue;
+
+        try {
+          const msg = JSON.parse(data.toString());
+
+          if (msg.type === "joinRoom") {
+            for (const [_, user] of socketClientsMap.entries()) {
+              socket.write(
+                JSON.stringify({ type: "playerJoined", payload: user }) + "\n"
+              );
+            }
+
+            const { id, name } = msg.payload as { id: string; name: string };
+
+            socketClientsMap.set(socket, { id, name });
+
+            broadcast({ type: "playerJoined", payload: { id, name } });
+          }
+        } catch (err) {
+          console.warn("invalid json:", packet);
+        }
       }
     });
 
