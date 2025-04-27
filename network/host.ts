@@ -3,102 +3,175 @@ import TcpSocket from "react-native-tcp-socket";
 import { NetworkInfo } from "react-native-network-info";
 import { User } from "@/types/User";
 import { Broadcast } from "@/constants/Broadcast";
+import UdpSocket from "react-native-udp/lib/types/UdpSocket";
+import Server from "react-native-tcp-socket/lib/types/Server";
+import { Room } from "@/types/Room";
 
-export const startBroadcast = async (user: User, port: number) => {
-  const socket = dgram.createSocket({
+let broadcastSocket: UdpSocket | null = null;
+let broadcastInterval: NodeJS.Timeout | null;
+let tcpServer: Server | null;
+
+const clients: TcpSocket.Socket[] = [];
+const socketClientsMap = new Map<
+  TcpSocket.Socket,
+  { id: string; name: string }
+>();
+
+export const startBroadcast = (roomName: string, user: User, port: number) => {
+  if (!user.ip) {
+    return;
+  }
+
+  broadcastSocket = dgram.createSocket({
     type: "udp4",
   });
 
-  const ip = await NetworkInfo.getIPV4Address();
+  broadcastInterval = setInterval(() => {
+    if (!broadcastSocket) {
+      return;
+    }
 
-  let interval: NodeJS.Timeout | undefined;
+    const message = JSON.stringify({
+      id: user.id,
+      type: "ROOM_CREATE",
+      owner: user.name,
+      roomName,
+      ip: user.ip,
+      port,
+    });
 
-  const message = `${user.id}|ROOM_CREATE|${user.name}|${ip}|${port}`;
-
-  interval = setInterval(() => {
-    socket.send(
-      message,
-      0,
-      message.length,
-      Broadcast.port, // porta de broadcast
-      "255.255.255.255", // enviar para todos na rede
-      (err) => {
-        if (err) console.error("Erro ao enviar broadcast:", err);
-      }
-    );
+    try {
+      broadcastSocket.send(
+        message,
+        0,
+        message.length,
+        Broadcast.port,
+        "255.255.255.255",
+        (err) => {
+          if (err) console.error("Erro ao enviar broadcast:", err);
+        }
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }, 1000);
 
-  socket.once("listening", () => {
-    socket.setBroadcast(true);
+  broadcastSocket.bind(port, () => {
+    broadcastSocket?.setBroadcast(true);
   });
 
-  // socket.on("message", (msg, rinfo) => {
-  //   console.log(`Mensagem recebida: ${msg}`);
-  //   // Seu código de tratamento de mensagens
-  // });
+  broadcastSocket.on("error", (err) => {
+    console.warn("Broadcast socket error capturado:", err);
+  });
 
-  socket.bind(port);
-
-  return {
-    socket,
-    interval,
-    ip,
-  };
+  return broadcastSocket;
 };
 
-export function createServer(ip: string, port: number) {
-  const server = TcpSocket.createServer((socket) => {
-    console.log("Nova sala criada");
+export const closeBroadcast = async (room: Room) => {
+  if (!broadcastSocket || !broadcastInterval) {
+    return;
+  }
+
+  if (broadcastInterval) {
+    clearInterval(broadcastInterval);
+    broadcastInterval = null;
+  }
+
+  if (broadcastSocket) {
+    const message = JSON.stringify({
+      id: room.id,
+      type: "ROOM_DELETE",
+      roomName: null,
+      ip: null,
+      port: null,
+    });
+
+    try {
+      broadcastSocket.send(
+        message,
+        0,
+        message.length,
+        Broadcast.port,
+        "255.255.255.255", // send to everyone on network
+        (err) => {
+          if (err) console.error("Erro ao enviar broadcast:", err);
+
+          broadcastSocket?.close();
+          broadcastSocket = null;
+        }
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  if (tcpServer) {
+    tcpServer.close();
+    tcpServer = null;
+  }
+
+  clients.forEach((socket) => {
+    socket.destroy();
+  });
+
+  clients.length = 0;
+};
+
+export function createServer(host: string, port: number) {
+  if (tcpServer) {
+    return tcpServer;
+  }
+
+  tcpServer = TcpSocket.createServer((socket) => {
+    clients.push(socket);
 
     socket.on("data", (data) => {
-      console.log("Mensagem recebida:", data.toString());
+      const msg = JSON.parse(data.toString());
 
-      // socket.write("Sala criada com sucesso!");
+      switch (msg.type) {
+        case "joinRoom":
+          const { id, name } = msg.payload as { id: string; name: string };
+
+          socketClientsMap.set(socket, { id, name });
+
+          broadcast({ type: "playerJoined", payload: { id, name } });
+          break;
+      }
     });
 
     socket.on("close", () => {
-      console.log("Conexão fechada");
+      const user = socketClientsMap.get(socket);
+      if (user) {
+        broadcast({ type: "playerLeft", payload: { id: user.id } });
+        socketClientsMap.delete(socket);
+      }
+
+      const idx = clients.indexOf(socket);
+      if (idx !== -1) clients.splice(idx, 1);
     });
 
     socket.on("error", (err) => {
       console.error("Erro no socket:", err);
+
+      const user = socketClientsMap.get(socket);
+      if (user) {
+        broadcast({ type: "playerLeft", payload: { id: user.id } });
+        socketClientsMap.delete(socket);
+      }
+
+      const idx = clients.indexOf(socket);
+      if (idx !== -1) clients.splice(idx, 1);
     });
   });
 
-  // Iniciar o servidor na porta 12345 (pode ser qualquer porta não utilizada)
-  server.listen(
-    {
-      port,
-      host: ip,
-    },
-    () => {
-      console.log("Servidor TCP aguardando conexões...");
-    }
-  );
+  tcpServer.listen({ port, host }, () => {
+    console.log("Servidor TCP aguardando conexões...");
+  });
 
-  return server;
+  return tcpServer;
 }
 
-export function getAvailablePort() {
-  const server = dgram.createSocket({
-    type: "udp4",
-  });
-
-  return new Promise<number>((res, rej) => {
-    server.on("error", () => {
-      res(getAvailablePort());
-    });
-
-    server.on("listening", () => {
-      const address = server.address();
-      console.log(`Porta disponível encontrada: ${address.port}`);
-      server.close();
-      res(address.port);
-    });
-
-    const porta = Math.floor(Math.random() * (65535 - 49152 + 1)) + 49152;
-    server.bind(porta);
-  });
-
-  // Tentar escutar uma porta aleatória (por exemplo, entre 49152 e 65535)
+function broadcast(msg: unknown) {
+  const str = JSON.stringify(msg) + "\n";
+  clients.forEach((c) => c.write(str));
 }

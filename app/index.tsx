@@ -1,6 +1,7 @@
 import { userStore } from "@/stores/user.store";
 import { Link } from "expo-router";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
+import Icon from "react-native-vector-icons/MaterialIcons";
 
 export default function HomeScreen() {
   const { user, setUsername } = userStore();
@@ -22,12 +23,26 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.actionsContainer}>
-        <Link href="/(game)" asChild>
-          <Button title="Online" disabled />
+        <Link href="/(locally)/locally" replace asChild>
+          <Icon.Button
+            name="signal-wifi-0-bar"
+            backgroundColor="#9a9a9a"
+            style={{ justifyContent: "center" }}
+            disabled
+          >
+            Online
+          </Icon.Button>
         </Link>
 
-        <Link href="/(locally)" asChild>
-          <Button title="Local" disabled={user.name.length < 4} />
+        <Link href="/(locally)/locally" replace asChild>
+          <Icon.Button
+            name="signal-cellular-alt"
+            backgroundColor="#3b5998"
+            disabled={user.name.length < 4}
+            style={{ justifyContent: "center" }}
+          >
+            Local
+          </Icon.Button>
         </Link>
       </View>
     </View>

@@ -1,12 +1,12 @@
 import { Broadcast } from "@/constants/Broadcast";
 import { roomsStore } from "@/stores/rooms.store";
-import { generateUUID } from "@/utils/generate-uuid";
 import { useEffect } from "react";
 import dgram from "react-native-udp";
 
 export function useBroadcast() {
   const addRoom = roomsStore((store) => store.addRoom);
   const removeRoom = roomsStore((store) => store.removeRoom);
+  const clearRooms = roomsStore((store) => store.clearRooms);
 
   useEffect(() => {
     const socket = dgram.createSocket({
@@ -14,16 +14,22 @@ export function useBroadcast() {
     });
 
     socket.on("message", (msg) => {
-      const [id, type, name, ip, hostPort] = msg.toString().split("|");
-      console.log("mensagem recebida", id, type, name, ip, hostPort);
+      const { id, type, owner, roomName, ip, port } = JSON.parse(
+        msg.toString()
+      );
+      console.log(id, type, roomName, ip, port);
 
       if (type == "ROOM_CREATE") {
-        addRoom({ id, name, ip, port: hostPort });
+        addRoom({ id, name: roomName, owner, ip, port });
       }
 
       if (type === "ROOM_DELETE") {
-        removeRoom(name);
+        removeRoom(id);
       }
+    });
+
+    socket.on("close", () => {
+      clearRooms();
     });
 
     socket.bind(Broadcast.port);

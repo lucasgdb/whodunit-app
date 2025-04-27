@@ -1,32 +1,25 @@
 import { useBroadcast } from "@/hooks/useBroadcast";
 import { useNetwork } from "@/hooks/useNetwork";
-import { useRouter } from "expo-router";
+import { roomsStore } from "@/stores/rooms.store";
+import { Room } from "@/types/Room";
 import React from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, FlatList, StyleSheet } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
 
 export default function RoomList() {
   useBroadcast();
 
-  const router = useRouter();
+  const rooms = roomsStore((store) => store.rooms);
 
-  const { rooms, connectToServer } = useNetwork();
+  const { connectToHost } = useNetwork();
 
-  const handleJoin = (ip: string, port: number) => {
-    connectToServer(ip, port).once("connect", () => {
-      router.push("/(game)");
-    });
+  const handleJoin = (room: Room) => {
+    connectToHost(room);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Salas disponíveis:</Text>
+      <Text style={styles.title}>Lobbies disponíveis</Text>
 
       {rooms.length > 0 ? (
         <FlatList
@@ -34,13 +27,12 @@ export default function RoomList() {
           keyExtractor={(item) => item.ip}
           renderItem={({ item }) => (
             <View style={styles.roomContainer}>
-              <Text style={styles.roomName}>Sala de {item.name}</Text>
+              <Text style={styles.roomName}>Sala de {item.owner}</Text>
 
               <Icon.Button
                 name="chevron-right"
                 backgroundColor="#3b5998"
-                onPress={() => handleJoin(item.ip, item.port)}
-                style={{ paddingHorizontal: 12 }}
+                onPress={() => handleJoin(item)}
               >
                 Entrar
               </Icon.Button>
@@ -69,11 +61,11 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   roomName: {
-    fontSize: 16,
+    fontSize: 18,
     color: "#666",
   },
   emptyWarning: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#666",
     marginTop: 8,
   },

@@ -1,13 +1,12 @@
 import UserList from "@/components/UserList";
-import { useNetwork } from "@/hooks/useNetwork";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function GameScreeen() {
-  const {} = useNetwork();
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sala do jogo</Text>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>Sala do jogo</Text>
+      </View>
 
       <UserList />
     </View>
@@ -17,6 +16,11 @@ export default function GameScreeen() {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
+  },
+  titleContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   title: {
     fontSize: 24,

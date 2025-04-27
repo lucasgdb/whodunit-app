@@ -7,6 +7,7 @@ import { generateUUID } from "@/utils/generate-uuid";
 interface UserState {
   user: User;
   setUsername: (username: string) => void;
+  setIp: (ip: string) => void;
 }
 
 export const userStore = create(
@@ -15,9 +16,10 @@ export const userStore = create(
       user: {
         id: generateUUID(),
         name: "",
+        ip: "",
       },
-      setUsername: (username) =>
-        set({ user: { id: get().user.id, name: username } }),
+      setUsername: (name) => set({ user: { ...get().user, name } }),
+      setIp: (ip) => set({ user: { ...get().user, ip } }),
     }),
     {
       name: "user-storage",

@@ -1,16 +1,14 @@
+import { CreateRoomButton } from "@/components/CreateRoomButton";
 import RoomList from "@/components/RoomList";
-import { Link } from "expo-router";
-import { Button, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 export default function LocallyScreeen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Jogar localmente</Text>
+      <Text style={styles.title}>Criar lobby</Text>
 
       <View style={styles.actionsContainer}>
-        <Link href="/(create-room)" asChild>
-          <Button title="Nova sala" />
-        </Link>
+        <CreateRoomButton />
       </View>
 
       <RoomList />

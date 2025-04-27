@@ -1,23 +1,31 @@
-import Server from "react-native-tcp-socket/lib/types/Server";
-import UdpSocket from "react-native-udp/lib/types/UdpSocket";
+import { Room } from "@/types/Room";
+import { User } from "@/types/User";
 import { create } from "zustand";
 
 interface RoomState {
-  broadcast: UdpSocket | null;
-  broadcastInterval: NodeJS.Timeout | null;
-  tcpServer: Server | null;
-  setBroadcast: (socket: UdpSocket, interval: NodeJS.Timeout) => void;
-  setTcpServer: (server: Server) => void;
-  reset: () => void;
+  room: Room | null;
+  setRoom: (room: Room | null) => void;
+  users: User[];
+  addUser: (user: User) => void;
+  removeUser: (userId: string) => void;
+  closeRoom: () => void;
 }
 
-export const useRoomStore = create<RoomState>((set) => ({
-  broadcast: null,
-  broadcastInterval: null,
-  tcpServer: null,
-  setBroadcast: (socket, interval) =>
-    set({ broadcast: socket, broadcastInterval: interval }),
-  setTcpServer: (server) => set({ tcpServer: server }),
-  reset: () =>
-    set({ broadcast: null, broadcastInterval: null, tcpServer: null }),
+export const roomStore = create<RoomState>((set, get) => ({
+  room: null,
+  setRoom: (room) => set({ room }),
+  users: [],
+  addUser: (user) => {
+    const existingUser = get().users.find((u) => u.id === user.id);
+
+    if (!existingUser) {
+      set({ users: [...get().users, user] });
+    }
+  },
+  removeUser: (userId) => {
+    const updatedUsers = get().users.filter((u) => u.id !== userId);
+
+    set({ users: updatedUsers });
+  },
+  closeRoom: () => set({ room: null, users: [] }),
 }));

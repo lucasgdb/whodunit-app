@@ -1,12 +1,12 @@
 import { Stack } from "expo-router";
 
-export default function GameLayout() {
+export default function LobbyLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="game"
+        name="lobby"
         options={{
-          title: "Jogo",
+          title: "Lobby",
         }}
       />
     </Stack>
