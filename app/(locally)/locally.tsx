@@ -25,6 +25,5 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     marginTop: 24,
-    gap: 8,
   },
 });

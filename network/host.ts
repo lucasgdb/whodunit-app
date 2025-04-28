@@ -6,102 +6,76 @@ import UdpSocket from "react-native-udp/lib/types/UdpSocket";
 import Server from "react-native-tcp-socket/lib/types/Server";
 import { Room } from "@/types/Room";
 
-let broadcastSocket: UdpSocket | null = null;
-let broadcastInterval: ReturnType<typeof setInterval> | null;
+let isBroadcasting = false;
+
+let udpSocket: UdpSocket | null = null;
+let udpMessagesInterval: ReturnType<typeof setInterval> | null;
 let tcpServer: Server | null;
 
 const clients: TcpSocket.Socket[] = [];
-const socketClientsMap = new Map<
-  TcpSocket.Socket,
-  { id: string; name: string }
->();
+const socketClientUsersMap = new Map<TcpSocket.Socket, User>();
 
-export const startBroadcast = (room: Room, user: User, port: number) => {
-  if (!user.ip) {
-    return;
-  }
+export function startBroadcast(room: Room, user: User, port: number) {
+  stopBroadcast(room);
 
-  broadcastSocket = dgram.createSocket({
+  isBroadcasting = true;
+
+  udpSocket = dgram.createSocket({
     type: "udp4",
   });
 
-  broadcastInterval = setInterval(() => {
-    if (!broadcastSocket) {
-      return;
-    }
-
-    const message = JSON.stringify({
-      id: user.id,
-      type: "ROOM_CREATE",
-      owner: user.name,
-      roomName: room.name,
-      ip: user.ip,
-      port,
-    });
-
-    try {
-      broadcastSocket.send(
-        message,
-        0,
-        message.length,
-        Broadcast.port,
-        "255.255.255.255",
-        (err) => {
-          if (err) console.error("Erro ao enviar broadcast:", err);
-        }
-      );
-    } catch (error) {
-      console.error(error);
-    }
-  }, 1000);
-
-  broadcastSocket.bind(port, () => {
-    broadcastSocket?.setBroadcast(true);
+  udpSocket.on("error", (err) => {
+    stopBroadcast(room);
+    console.error(err);
   });
 
-  broadcastSocket.on("error", (err) => {
-    console.warn("Broadcast socket error capturado:", err);
+  udpSocket.bind(port, () => {
+    if (!isBroadcasting || !udpSocket) return;
+
+    udpSocket.setBroadcast(true);
+
+    udpMessagesInterval = setInterval(() => {
+      if (!udpSocket) {
+        return;
+      }
+
+      const message =
+        JSON.stringify({ id: user.id, type: "ROOM_CREATE", owner: user.name, roomName: room.name, ip: user.ip, port }) +
+        "\n";
+
+      udpSocket.send(message, 0, message.length, Broadcast.port, "255.255.255.255", (err) => {
+        if (err) console.error(err);
+      });
+    }, 1000);
   });
 
-  return broadcastSocket;
-};
+  return udpSocket;
+}
 
-export const closeBroadcast = async (room: Room) => {
-  if (!broadcastSocket || !broadcastInterval) {
-    return;
+export function stopBroadcast(room: Room) {
+  isBroadcasting = false;
+
+  if (udpMessagesInterval) {
+    clearInterval(udpMessagesInterval);
+    udpMessagesInterval = null;
   }
 
-  if (broadcastInterval) {
-    clearInterval(broadcastInterval);
-    broadcastInterval = null;
-  }
+  if (udpSocket) {
+    const message = JSON.stringify({ id: room.id, type: "ROOM_DELETE", roomName: null, ip: null, port: null }) + "\n";
 
-  if (broadcastSocket) {
-    const message = JSON.stringify({
-      id: room.id,
-      type: "ROOM_DELETE",
-      roomName: null,
-      ip: null,
-      port: null,
-    });
+    udpSocket.send(
+      message,
+      0,
+      message.length,
+      Broadcast.port,
+      "255.255.255.255", // send to everyone on network
+      (err) => {
+        if (err) console.error(err);
 
-    try {
-      broadcastSocket.send(
-        message,
-        0,
-        message.length,
-        Broadcast.port,
-        "255.255.255.255", // send to everyone on network
-        (err) => {
-          if (err) console.error("Erro ao enviar broadcast:", err);
-
-          broadcastSocket?.close();
-          broadcastSocket = null;
-        }
-      );
-    } catch (error) {
-      console.error(error);
-    }
+        udpSocket?.close();
+        udpSocket = null;
+      }
+    );
   }
 
   if (tcpServer) {
@@ -114,7 +88,7 @@ export const closeBroadcast = async (room: Room) => {
   });
 
   clients.length = 0;
-};
+}
 
 export function createServer(host: string, port: number) {
   if (tcpServer) {
@@ -138,20 +112,18 @@ export function createServer(host: string, port: number) {
         if (!packet) continue;
 
         try {
-          const msg = JSON.parse(data.toString());
+          const msg = JSON.parse(packet);
 
           if (msg.type === "joinRoom") {
-            for (const [_, user] of socketClientsMap.entries()) {
-              socket.write(
-                JSON.stringify({ type: "playerJoined", payload: user }) + "\n"
-              );
+            for (const [_, user] of socketClientUsersMap.entries()) {
+              socket.write(JSON.stringify({ type: "playerJoined", payload: { user } }) + "\n");
             }
 
-            const { id, name } = msg.payload as { id: string; name: string };
+            const user = msg.payload.user as User;
 
-            socketClientsMap.set(socket, { id, name });
+            socketClientUsersMap.set(socket, user);
 
-            broadcast({ type: "playerJoined", payload: { id, name } });
+            broadcast({ type: "playerJoined", payload: { user } });
           }
         } catch (err) {
           console.warn("invalid json:", packet);
@@ -160,10 +132,10 @@ export function createServer(host: string, port: number) {
     });
 
     socket.on("close", () => {
-      const user = socketClientsMap.get(socket);
+      const user = socketClientUsersMap.get(socket);
       if (user) {
-        broadcast({ type: "playerLeft", payload: { id: user.id } });
-        socketClientsMap.delete(socket);
+        broadcast({ type: "playerLeft", payload: { user } });
+        socketClientUsersMap.delete(socket);
       }
 
       const idx = clients.indexOf(socket);
@@ -173,10 +145,10 @@ export function createServer(host: string, port: number) {
     socket.on("error", (err) => {
       console.error("Erro no socket:", err);
 
-      const user = socketClientsMap.get(socket);
+      const user = socketClientUsersMap.get(socket);
       if (user) {
-        broadcast({ type: "playerLeft", payload: { id: user.id } });
-        socketClientsMap.delete(socket);
+        broadcast({ type: "playerLeft", payload: { user } });
+        socketClientUsersMap.delete(socket);
       }
 
       const idx = clients.indexOf(socket);
@@ -185,7 +157,7 @@ export function createServer(host: string, port: number) {
   });
 
   tcpServer.listen({ port, host }, () => {
-    console.log("Servidor TCP aguardando conexões...");
+    console.info("TCP Ready for connections...");
   });
 
   return tcpServer;

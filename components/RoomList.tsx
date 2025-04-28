@@ -24,18 +24,14 @@ export function RoomList() {
             <View style={styles.roomContainer}>
               <Text style={styles.roomName}>Lobby de {item.owner}</Text>
 
-              <Icon.Button
-                name="chevron-right"
-                backgroundColor="#3b5998"
-                onPress={() => connectToRoom(item)}
-              >
+              <Icon.Button name="chevron-right" backgroundColor="#3b5998" onPress={() => connectToRoom(item)}>
                 Entrar
               </Icon.Button>
             </View>
           )}
         />
       ) : (
-        <Text style={styles.emptyWarning}>Não há nenhuma lobby criado</Text>
+        <Text style={styles.emptyWarning}>Não há nenhum lobby criado</Text>
       )}
     </View>
   );

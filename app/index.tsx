@@ -10,26 +10,16 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bem-vindo ao WhoDunit!</Text>
+      <Text style={styles.title}>Seja bem-vindo</Text>
 
       <View style={styles.inputContainer}>
-        <Text>Digite seu nome:</Text>
-        <TextInput
-          placeholder="Nome"
-          value={user.name}
-          onChangeText={handleChangeUsername}
-          style={styles.input}
-        />
+        <Text>Seu nome *</Text>
+        <TextInput placeholder="Nome" value={user.name} onChangeText={handleChangeUsername} style={styles.input} />
       </View>
 
       <View style={styles.actionsContainer}>
         <Link href="/(locally)/locally" replace asChild>
-          <Icon.Button
-            name="signal-wifi-0-bar"
-            backgroundColor="#aaa"
-            style={{ justifyContent: "center" }}
-            disabled
-          >
+          <Icon.Button name="signal-wifi-0-bar" backgroundColor="#aaa" style={{ justifyContent: "center" }} disabled>
             Online
           </Icon.Button>
         </Link>

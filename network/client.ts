@@ -6,28 +6,69 @@ import { User } from "@/types/User";
 import { router } from "expo-router";
 import { roomsStore } from "@/stores/rooms.store";
 import { Room } from "@/types/Room";
+import dgram from "react-native-udp";
+import { Broadcast } from "@/constants/Broadcast";
 
 let client: TcpSocket.Socket | null = null;
+
+export const listenBroadcast = () => {
+  const { addRoom, removeRoom, clearRooms } = roomsStore.getState();
+
+  const socket = dgram.createSocket({
+    type: "udp4",
+  });
+
+  let buffer = "";
+
+  socket.on("message", (msg) => {
+    buffer += msg.toString();
+
+    let boundary: number;
+
+    while ((boundary = buffer.indexOf("\n")) !== -1) {
+      const packet = buffer.slice(0, boundary).trim();
+
+      buffer = buffer.slice(boundary + 1);
+
+      if (!packet) continue;
+
+      try {
+        const { id, type, owner, roomName, ip, port } = JSON.parse(packet);
+
+        if (type == "ROOM_CREATE") {
+          addRoom({ id, name: roomName, owner, ip, port });
+        }
+
+        if (type === "ROOM_DELETE") {
+          removeRoom(id);
+        }
+      } catch (err) {
+        console.warn("invalid json:", packet);
+      }
+    }
+  });
+
+  socket.on("close", () => {
+    clearRooms();
+  });
+
+  socket.bind(Broadcast.port);
+
+  return socket;
+};
 
 export const connectToHost = (room: Room) => {
   if (client) {
     return client;
   }
 
-  client = TcpSocket.createConnection(
-    { host: room.ip, port: room.port },
-    () => {
-      const { user } = userStore.getState();
+  client = TcpSocket.createConnection({ host: room.ip, port: room.port }, () => {
+    const { user } = userStore.getState();
 
-      const joinMsg =
-        JSON.stringify({
-          type: "joinRoom",
-          payload: { id: user.id, name: user.name },
-        }) + "\n";
+    const message = JSON.stringify({ type: "joinRoom", payload: { user } }) + "\n";
 
-      client?.write(joinMsg);
-    }
-  );
+    client?.write(message);
+  });
 
   let buffer = "";
 
@@ -49,10 +90,10 @@ export const connectToHost = (room: Room) => {
 
         switch (msg.type) {
           case "playerJoined":
-            addUser(msg.payload as User);
+            addUser(msg.payload.user as User);
             break;
           case "playerLeft":
-            removeUser(msg.payload.id as string);
+            removeUser(msg.payload.user.id as string);
             break;
         }
       } catch (err) {
@@ -80,14 +121,14 @@ export const connectToHost = (room: Room) => {
   return client;
 };
 
-export const disconnectFromServer = () => {
+export const disconnectFromHost = () => {
   if (!client) return;
 
   const user = userStore.getState().user;
 
-  const leaveMsg = { type: "playerLeft", payload: { id: user.id } };
+  const message = JSON.stringify({ type: "playerLeft", payload: { id: user.id } }) + "\n";
 
-  client.write(JSON.stringify(leaveMsg) + "\n");
+  client.write(message);
 
   client.off("data");
   client.off("error");

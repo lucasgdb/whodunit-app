@@ -1,4 +1,4 @@
-import { closeBroadcast, createServer, startBroadcast } from "@/network/host";
+import { stopBroadcast, createServer, startBroadcast } from "@/network/host";
 import { useCallback } from "react";
 import { userStore } from "@/stores/user.store";
 import { portStore } from "@/stores/port.store";
@@ -35,7 +35,7 @@ export function useNetwork() {
 
   const closeRoom = useCallback(() => {
     if (room) {
-      closeBroadcast(room);
+      stopBroadcast(room);
     }
   }, [room]);
 
