@@ -12,7 +12,7 @@ import { getAvailablePort } from "@/utils/get-available-port";
 import { NetworkInfo } from "react-native-network-info";
 import { userStore } from "@/stores/user.store";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { StyleSheet } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -52,24 +52,26 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DefaultTheme : DefaultTheme}>
-      <GestureHandlerRootView style={styles.container}>
-        <BottomSheetModalProvider>
-          <Stack>
-            <Stack.Screen name="(locally)" options={{ headerShown: false }} />
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <GestureHandlerRootView style={styles.container}>
+          <BottomSheetModalProvider>
+            <Stack>
+              <Stack.Screen name="(locally)" options={{ headerShown: false }} />
 
-            <Stack.Screen name="(lobby)" options={{ headerShown: false }} />
+              <Stack.Screen name="(lobby)" options={{ headerShown: false }} />
 
-            <Stack.Screen name="(game)" options={{ headerShown: false }} />
+              <Stack.Screen name="(game)" options={{ headerShown: false }} />
 
-            <Stack.Screen
-              name="index"
-              options={{
-                title: "WhoDunit",
-              }}
-            />
-          </Stack>
-        </BottomSheetModalProvider>
-      </GestureHandlerRootView>
+              <Stack.Screen
+                name="index"
+                options={{
+                  title: "WhoDunit",
+                }}
+              />
+            </Stack>
+          </BottomSheetModalProvider>
+        </GestureHandlerRootView>
+      </KeyboardAvoidingView>
 
       <StatusBar style="auto" />
     </ThemeProvider>
